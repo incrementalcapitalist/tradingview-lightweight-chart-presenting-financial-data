@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { createChart, IChartApi, Time } from 'lightweight-charts';
+import './App.css'; // We'll create this file for custom styles
 
 /**
  * Interface for individual stock data points
@@ -33,7 +34,7 @@ const App: React.FC = () => {
   // State to store the fetched stock data
   const [data, setData] = useState<StockData[]>([]);
   // State to manage loading status
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState<boolean>(false);
   // State to store any error messages
   const [error, setError] = useState<string | null>(null);
   // State to store the current stock symbol
@@ -57,10 +58,20 @@ const App: React.FC = () => {
     try {
       // Set loading state to true before fetching data
       setLoading(true);
+      setError(null);
       // Replace this with actual API call when backend is set up
-      const response = { data: [] as StockData[], hasMore: false }; // Placeholder
+      const response = { 
+        data: Array(50).fill(null).map((_, i) => ({
+          t: Date.now() + i * 86400000,
+          o: 100 + Math.random() * 10,
+          h: 105 + Math.random() * 10,
+          l: 95 + Math.random() * 10,
+          c: 100 + Math.random() * 10,
+          v: 1000000 + Math.random() * 1000000
+        })), 
+        hasMore: pageNum < 3 
+      };
       
-      // Update data state based on append flag
       if (append) {
         setData(prevData => [...prevData, ...response.data]);
       } else {
@@ -70,10 +81,10 @@ const App: React.FC = () => {
       // Update other states based on API response
       setHasMore(response.hasMore);
       setPage(pageNum);
-      setLoading(false);
     } catch (err) {
       // Set error state if API call fails
-      setError('Failed to fetch data');
+      setError('Failed to fetch data. Please try again.');
+    } finally {
       setLoading(false);
     }
   };
@@ -90,14 +101,24 @@ const App: React.FC = () => {
       // Create new chart if it doesn't exist
       if (!chartRef.current) {
         chartRef.current = createChart(chartContainerRef.current, {
-          width: 600,
-          height: 300,
+          width: chartContainerRef.current.clientWidth,
+          height: 400,
+          layout: {
+            background: { type: 'solid', color: '#ffffff' },
+            textColor: '#333',
+          },
+          grid: {
+            vertLines: { color: '#f0f0f0' },
+            horzLines: { color: '#f0f0f0' },
+          },
         });
+        window.addEventListener('resize', handleResize);
       }
 
-      // Add candlestick series to the chart
-      const candlestickSeries = chartRef.current.addCandlestickSeries();
-      // Set data for the candlestick series
+      const candlestickSeries = chartRef.current.addCandlestickSeries({
+        upColor: '#26a69a', downColor: '#ef5350', borderVisible: false,
+        wickUpColor: '#26a69a', wickDownColor: '#ef5350',
+      });
       candlestickSeries.setData(data.map(d => ({
         time: new Date(d.t).getTime() / 1000 as Time,
         open: d.o,
@@ -109,12 +130,19 @@ const App: React.FC = () => {
 
     // Cleanup function to remove chart when component unmounts
     return () => {
+      window.removeEventListener('resize', handleResize);
       if (chartRef.current) {
         chartRef.current.remove();
         chartRef.current = null;
       }
     };
   }, [data]);
+
+  const handleResize = () => {
+    if (chartRef.current && chartContainerRef.current) {
+      chartRef.current.applyOptions({ width: chartContainerRef.current.clientWidth });
+    }
+  };
 
   /**
    * Handles changes in the symbol input field
@@ -137,7 +165,7 @@ const App: React.FC = () => {
    * Loads more data when the "Load More" button is clicked
    */
   const loadMore = () => {
-    if (hasMore) {
+    if (hasMore && !loading) {
       fetchData(page + 1, true);
     }
   };
@@ -146,21 +174,23 @@ const App: React.FC = () => {
   if (error) return <div>{error}</div>;
 
   return (
-    <div>
-      <h1>Stock Data</h1>
-      <form onSubmit={handleSubmit}>
+    <div className="app-container">
+      <h1>Stock Data Visualization</h1>
+      <form onSubmit={handleSubmit} className="search-form">
         <input
           type="text"
           value={symbol}
           onChange={handleSymbolChange}
           placeholder="Enter stock symbol"
+          className="search-input"
         />
-        <button type="submit">Fetch Data</button>
+        <button type="submit" className="search-button">Fetch Data</button>
       </form>
-      <div ref={chartContainerRef} />
-      {loading && <div>Loading...</div>}
+      {error && <div className="error-message">{error}</div>}
+      <div ref={chartContainerRef} className="chart-container" />
+      {loading && <div className="loading-spinner">Loading...</div>}
       {hasMore && !loading && (
-        <button onClick={loadMore}>Load More</button>
+        <button onClick={loadMore} className="load-more-button">Load More</button>
       )}
     </div>
   );

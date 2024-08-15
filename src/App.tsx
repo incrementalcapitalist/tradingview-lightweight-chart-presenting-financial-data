@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { createChart, IChartApi, Time } from 'lightweight-charts';
+import { createChart, IChartApi, Time, ColorType } from 'lightweight-charts';
 import './App.css'; // We'll create this file for custom styles
 
 /**
@@ -50,40 +50,54 @@ const App: React.FC = () => {
   const chartRef = useRef<IChartApi | null>(null);
 
   /**
-   * Fetches stock data from the API
+   * Fetches stock data from the Polygon.io API
    * @param {number} pageNum - The page number to fetch
    * @param {boolean} append - Whether to append the new data or replace existing data
    */
   const fetchData = async (pageNum: number, append: boolean = false) => {
     try {
-      // Set loading state to true before fetching data
       setLoading(true);
       setError(null);
-      // Replace this with actual API call when backend is set up
-      const response = { 
-        data: Array(50).fill(null).map((_, i) => ({
-          t: Date.now() + i * 86400000,
-          o: 100 + Math.random() * 10,
-          h: 105 + Math.random() * 10,
-          l: 95 + Math.random() * 10,
-          c: 100 + Math.random() * 10,
-          v: 1000000 + Math.random() * 1000000
-        })), 
-        hasMore: pageNum < 3 
-      };
       
+      const apiKey = import.meta.env.VITE_POLYGON_API_KEY;
+      const limit = 50;
+      const offset = (pageNum - 1) * limit;
+      
+      // Calculate date range (2 years from current date)
+      const today = new Date();
+      const twoYearsAgo = new Date(today.getFullYear() - 2, today.getMonth(), today.getDate());
+      
+      // Construct the API URL
+      const url = `https://api.polygon.io/v2/aggs/ticker/${symbol}/range/1/day/${twoYearsAgo.toISOString().split('T')[0]}/${today.toISOString().split('T')[0]}?apiKey=${apiKey}&sort=asc&limit=${limit}&offset=${offset}`;
+      
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const result = await response.json();
+      
+      // Map API response to StockData interface
+      const newData: StockData[] = result.results.map((item: any) => ({
+        t: item.t,
+        o: item.o,
+        h: item.h,
+        l: item.l,
+        c: item.c,
+        v: item.v
+      }));
+
       if (append) {
-        setData(prevData => [...prevData, ...response.data]);
+        setData(prevData => [...prevData, ...newData]);
       } else {
-        setData(response.data);
+        setData(newData);
       }
       
-      // Update other states based on API response
-      setHasMore(response.hasMore);
+      // Update pagination states
+      setHasMore(result.results.length === limit);
       setPage(pageNum);
     } catch (err) {
-      // Set error state if API call fails
       setError('Failed to fetch data. Please try again.');
+      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -104,23 +118,29 @@ const App: React.FC = () => {
           width: chartContainerRef.current.clientWidth,
           height: 400,
           layout: {
-            background: { type: 'solid', color: '#ffffff' },
-            textColor: '#333',
+            background: { type: 'solid', color: '#ffffff' as ColorType },
+            textColor: '#333' as ColorType,
           },
           grid: {
-            vertLines: { color: '#f0f0f0' },
-            horzLines: { color: '#f0f0f0' },
+            vertLines: { color: '#f0f0f0' as ColorType },
+            horzLines: { color: '#f0f0f0' as ColorType },
           },
         });
         window.addEventListener('resize', handleResize);
       }
 
+      // Add and configure candlestick series
       const candlestickSeries = chartRef.current.addCandlestickSeries({
-        upColor: '#26a69a', downColor: '#ef5350', borderVisible: false,
-        wickUpColor: '#26a69a', wickDownColor: '#ef5350',
+        upColor: '#26a69a' as ColorType, 
+        downColor: '#ef5350' as ColorType, 
+        borderVisible: false,
+        wickUpColor: '#26a69a' as ColorType, 
+        wickDownColor: '#ef5350' as ColorType,
       });
+      
+      // Set data for the candlestick series
       candlestickSeries.setData(data.map(d => ({
-        time: new Date(d.t).getTime() / 1000 as Time,
+        time: d.t / 1000 as Time,
         open: d.o,
         high: d.h,
         low: d.l,
@@ -138,6 +158,9 @@ const App: React.FC = () => {
     };
   }, [data]);
 
+  /**
+   * Handles window resize events to adjust chart width
+   */
   const handleResize = () => {
     if (chartRef.current && chartContainerRef.current) {
       chartRef.current.applyOptions({ width: chartContainerRef.current.clientWidth });
@@ -169,9 +192,6 @@ const App: React.FC = () => {
       fetchData(page + 1, true);
     }
   };
-
-  // Render error message if there's an error
-  if (error) return <div>{error}</div>;
 
   return (
     <div className="app-container">

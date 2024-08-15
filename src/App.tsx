@@ -50,7 +50,7 @@ const App: React.FC = () => {
   const chartRef = useRef<IChartApi | null>(null);
 
   /**
-   * Fetches stock data from the Polygon.io API
+   * Fetches stock data from the server-side API
    * @param {number} pageNum - The page number to fetch
    * @param {boolean} append - Whether to append the new data or replace existing data
    */
@@ -59,25 +59,20 @@ const App: React.FC = () => {
       setLoading(true);
       setError(null);
       
-      const apiKey = import.meta.env.VITE_POLYGON_API_KEY;
       const limit = 50;
       const offset = (pageNum - 1) * limit;
       
-      // Calculate date range (2 years from current date)
-      const today = new Date();
-      const twoYearsAgo = new Date(today.getFullYear() - 2, today.getMonth(), today.getDate());
+      // Call your server-side API endpoint
+      const response = await fetch(`/api/stock-data?symbol=${symbol}&limit=${limit}&offset=${offset}`);
       
-      // Construct the API URL
-      const url = `https://api.polygon.io/v2/aggs/ticker/${symbol}/range/1/day/${twoYearsAgo.toISOString().split('T')[0]}/${today.toISOString().split('T')[0]}?apiKey=${apiKey}&sort=asc&limit=${limit}&offset=${offset}`;
-      
-      const response = await fetch(url);
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
+      
       const result = await response.json();
       
-      // Map API response to StockData interface
-      const newData: StockData[] = result.results.map((item: any) => ({
+      // Assuming the server returns data in the same format as before
+      const newData: StockData[] = result.data.map((item: any) => ({
         t: item.t,
         o: item.o,
         h: item.h,
@@ -92,8 +87,7 @@ const App: React.FC = () => {
         setData(newData);
       }
       
-      // Update pagination states
-      setHasMore(result.results.length === limit);
+      setHasMore(result.hasMore);
       setPage(pageNum);
     } catch (err) {
       setError('Failed to fetch data. Please try again.');

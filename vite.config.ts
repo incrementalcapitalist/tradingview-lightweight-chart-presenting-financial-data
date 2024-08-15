@@ -20,12 +20,9 @@ export default defineConfig({
     cors: true,
   },
   optimizeDeps: {
-    include: ['@aws-amplify/ui-react'],
+    include: ['aws-amplify'],
   },
   define: {
     'process.env.VITE_POLYGON_API_KEY': JSON.stringify(process.env.VITE_POLYGON_API_KEY),
   },
-  esbuild: {
-    logOverride: { 'this-is-undefined-in-esm': 'silent' }
-  }
 })

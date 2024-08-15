@@ -4,8 +4,7 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { API } from 'aws-amplify';
-import { createChart, IChartApi, CandlestickData } from 'lightweight-charts';
+import { createChart, IChartApi, Time } from 'lightweight-charts';
 
 /**
  * Interface for individual stock data points
@@ -24,17 +23,6 @@ interface StockData {
   l: number;
   c: number;
   v: number;
-}
-
-/**
- * Interface for the API response
- * @interface ApiResponse
- * @property {StockData[]} data - Array of stock data points
- * @property {boolean} hasMore - Indicates if there are more pages of data
- */
-interface ApiResponse {
-  data: StockData[];
-  hasMore: boolean;
 }
 
 /**
@@ -69,10 +57,8 @@ const App: React.FC = () => {
     try {
       // Set loading state to true before fetching data
       setLoading(true);
-      // Make API call to fetch stock data
-      const response = await API.get('stockApi', '/stock', { 
-        queryStringParameters: { symbol, page: pageNum.toString() } 
-      }) as ApiResponse;
+      // Replace this with actual API call when backend is set up
+      const response = { data: [] as StockData[], hasMore: false }; // Placeholder
       
       // Update data state based on append flag
       if (append) {
@@ -113,7 +99,7 @@ const App: React.FC = () => {
       const candlestickSeries = chartRef.current.addCandlestickSeries();
       // Set data for the candlestick series
       candlestickSeries.setData(data.map(d => ({
-        time: d.t / 1000, // Convert milliseconds to seconds
+        time: new Date(d.t).getTime() / 1000 as Time,
         open: d.o,
         high: d.h,
         low: d.l,

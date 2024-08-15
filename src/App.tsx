@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { createChart, IChartApi, Time, ColorType } from 'lightweight-charts';
+import { createChart, IChartApi, Time, LayoutOptions } from 'lightweight-charts';
 import './App.css'; // We'll create this file for custom styles
 
 /**
@@ -109,44 +109,47 @@ const App: React.FC = () => {
   }, [symbol]);
 
   // Effect to create and update chart when data changes
-  useEffect(() => {
+useEffect(() => {
     // Check if chart container exists and data is available
-    if (chartContainerRef.current && data.length > 0) {
+  if (chartContainerRef.current && data.length > 0) {
       // Create new chart if it doesn't exist
-      if (!chartRef.current) {
-        chartRef.current = createChart(chartContainerRef.current, {
-          width: chartContainerRef.current.clientWidth,
-          height: 400,
-          layout: {
-            background: { type: 'solid', color: '#ffffff' as ColorType },
-            textColor: '#333' as ColorType,
+    if (!chartRef.current) {
+      chartRef.current = createChart(chartContainerRef.current, {
+        width: chartContainerRef.current.clientWidth,
+        height: 400,
+        layout: {
+          background: { 
+            type: 'solid',
+            color: '#ffffff' 
           },
-          grid: {
-            vertLines: { color: '#f0f0f0' as ColorType },
-            horzLines: { color: '#f0f0f0' as ColorType },
-          },
-        });
-        window.addEventListener('resize', handleResize);
-      }
+          textColor: '#333',
+        } as LayoutOptions,
+        grid: {
+          vertLines: { color: '#f0f0f0' },
+          horzLines: { color: '#f0f0f0' },
+        },
+      });
+      window.addEventListener('resize', handleResize);
+    }
 
       // Add and configure candlestick series
-      const candlestickSeries = chartRef.current.addCandlestickSeries({
-        upColor: '#26a69a' as ColorType, 
-        downColor: '#ef5350' as ColorType, 
-        borderVisible: false,
-        wickUpColor: '#26a69a' as ColorType, 
-        wickDownColor: '#ef5350' as ColorType,
-      });
-      
+    const candlestickSeries = chartRef.current.addCandlestickSeries({
+      upColor: '#26a69a', 
+      downColor: '#ef5350', 
+      borderVisible: false,
+      wickUpColor: '#26a69a', 
+      wickDownColor: '#ef5350',
+    });
+    
       // Set data for the candlestick series
-      candlestickSeries.setData(data.map(d => ({
-        time: d.t / 1000 as Time,
-        open: d.o,
-        high: d.h,
-        low: d.l,
-        close: d.c,
-      })));
-    }
+    candlestickSeries.setData(data.map(d => ({
+      time: d.t / 1000 as Time,
+      open: d.o,
+      high: d.h,
+      low: d.l,
+      close: d.c,
+    })));
+  }
 
     // Cleanup function to remove chart when component unmounts
     return () => {
@@ -156,7 +159,7 @@ const App: React.FC = () => {
         chartRef.current = null;
       }
     };
-  }, [data]);
+}, [data]);
 
   /**
    * Handles window resize events to adjust chart width

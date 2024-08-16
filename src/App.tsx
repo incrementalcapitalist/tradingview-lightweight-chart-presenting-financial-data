@@ -50,49 +50,101 @@ const App: React.FC = () => {
   const chartRef = useRef<IChartApi | null>(null);
 
   /**
-   * Fetches stock data from the server-side API
+   * @fileoverview This file contains the fetchData function for retrieving stock data using AWS Amplify Gen 2.
+   * @author Incremental Capitalist
+   * @requires aws-amplify/auth
+   * @requires aws-amplify/api
+   */
+
+  import { fetchAuthSession } from 'aws-amplify/auth';
+  import { generateClient } from 'aws-amplify/api';
+
+  // Generate a reusable API client
+  const client = generateClient();
+
+  /**
+   * Interface for individual stock data points
+   * @interface StockData
+   * @property {number} t - The timestamp of the data point in milliseconds
+   * @property {number} o - The opening price
+   * @property {number} h - The highest price
+   * @property {number} l - The lowest price
+   * @property {number} c - The closing price
+   * @property {number} v - The trading volume
+   */
+  interface StockData {
+    t: number;
+    o: number;
+    h: number;
+    l: number;
+    c: number;
+    v: number;
+  }
+
+  /**
+   * Fetches stock data from the server-side API using AWS Amplify
+   * @async
+   * @function fetchData
    * @param {number} pageNum - The page number to fetch
    * @param {boolean} append - Whether to append the new data or replace existing data
+   * @throws {Error} Throws an error if the API call fails
    */
-  const fetchData = async (pageNum: number, append: boolean = false) => {
+  const fetchData = async (pageNum: number, append: boolean = false): Promise<void> => {
     try {
+      // Set loading state to true as the fetch operation starts
       setLoading(true);
+      // Clear any previous errors
       setError(null);
       
-      const limit = 50;
-      const offset = (pageNum - 1) * limit;
+      // Fetch the current auth session to get the access token
+      // This is required for authenticated API calls
+      const { accessToken } = await fetchAuthSession();
       
-      // Call your server-side API endpoint
-      const response = await fetch(`/api/stock-data?symbol=${symbol}&limit=${limit}&offset=${offset}`);
+      // Make a GET request to the '/stock' endpoint using the Amplify API client
+      // Pass query parameters and authorization header
+      const response = await client.get('/stock', {
+        queryParams: {
+          symbol: symbol, // The stock symbol to fetch data for
+          page: pageNum.toString() // Convert page number to string for query parameter
+        },
+        headers: {
+          Authorization: `Bearer ${accessToken.token}` // Set the Authorization header with the access token
+        }
+      });
       
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      // Check if the response status is not 200 (OK)
+      if (response.status !== 200) {
+        // If status is not 200, throw an error
+        throw new Error('Failed to fetch data from API');
       }
       
-      const result = await response.json();
-      
-      // Assuming the server returns data in the same format as before
-      const newData: StockData[] = result.data.map((item: any) => ({
-        t: item.t,
-        o: item.o,
-        h: item.h,
-        l: item.l,
-        c: item.c,
-        v: item.v
-      }));
+      // Extract the data from the response
+      const result = response.data;
+      // Map the API response to our StockData interface
+      const newData: StockData[] = result.data;
 
+      // Update the state based on whether we're appending or replacing data
       if (append) {
+        // If appending, combine the new data with the existing data
         setData(prevData => [...prevData, ...newData]);
       } else {
+        // If not appending, replace the existing data with the new data
         setData(newData);
       }
       
+      // Update the hasMore state to indicate if there's more data to load
       setHasMore(result.hasMore);
+      // Update the current page number
       setPage(pageNum);
     } catch (err) {
+      // If an error occurs during the fetch operation
+      // Set an error message for the user
       setError('Failed to fetch data. Please try again.');
-      console.error(err);
+      // Log the detailed error to the console for debugging
+      console.error('Detailed error:', err);
     } finally {
+      // Regardless of success or failure, set loading to false
+      // This indicates that the fetch operation has completed
       setLoading(false);
     }
   };

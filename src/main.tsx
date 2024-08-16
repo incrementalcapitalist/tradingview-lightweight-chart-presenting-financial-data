@@ -1,6 +1,8 @@
 /**
- * @fileoverview Main entry point for the Vite React application with Amplify configuration
+ * @fileoverview Main entry point for the Vite React application
+ * @author Incremental Capitalist
  */
+
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
